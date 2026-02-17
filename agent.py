@@ -505,9 +505,18 @@ class Agent:
                         # Forward repairable errors to the LLM, maybe it can fix them
                         msg = {"message": errors.format_error(e)}
                         await self.call_extensions("error_format", msg=msg)
-                        self.hist_add_warning(msg["message"])
-                        PrintStyle(font_color="red", padding=True).print(msg["message"])
-                        self.context.log.log(type="warning", content=msg["message"])
+
+                        reflection_msg = (
+                            f"{msg['message']}\n\n"
+                            "### Analysis Required\n"
+                            "Please analyze why this error occurred. "
+                            "Consider if your assumptions about the environment or tool arguments were wrong. "
+                            "Reflect on this before your next move."
+                        )
+
+                        self.hist_add_warning(reflection_msg)
+                        PrintStyle(font_color="red", padding=True).print(reflection_msg)
+                        self.context.log.log(type="warning", content=reflection_msg)
                     except Exception as e:
                         # Retry critical exceptions before failing
                         error_retries = await self.retry_critical_exception(
@@ -955,8 +964,17 @@ class Agent:
             return None
         else:
             warning_msg_misformat = self.read_prompt("fw.msg_misformat.md")
-            self.hist_add_warning(warning_msg_misformat)
-            PrintStyle(font_color="red", padding=True).print(warning_msg_misformat)
+
+            reflection_msg = (
+                f"{warning_msg_misformat}\n\n"
+                "### Self-Correction Required\n"
+                "Your last response was not valid JSON or was missing required fields. "
+                "Please analyze your output format and ensure you are providing a single valid JSON object (or multiple objects if using multiple tools). "
+                "Do NOT include any text outside the JSON block."
+            )
+
+            self.hist_add_warning(reflection_msg)
+            PrintStyle(font_color="red", padding=True).print(reflection_msg)
             self.context.log.log(
                 type="warning",
                 content=f"{self.agent_name}: Message misformat, no valid tool request found.",

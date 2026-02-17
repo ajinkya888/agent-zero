@@ -8,6 +8,11 @@ agentic mode active
 In your thoughts, always maintain a `[PLAN]` block.
 Update it as you progress: use `[DONE]` for completed steps, `[NEXT]` for current step, and `[TODO]` for future steps.
 
+ 0.1 self-critique
+ Before executing the first step of your plan, critique it.
+ Are there simpler ways? Are you missing edge cases? Is it safe?
+ Adjust the plan based on this critique.
+
 1 check memories solutions skills prefer skills
 
 2 break task into subtasks if needed
