@@ -53,6 +53,7 @@ Type = Literal[
     "response",
     "tool",
     "mcp",
+    "ide",
     "input",
     "user",
     "util",

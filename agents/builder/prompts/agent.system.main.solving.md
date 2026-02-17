@@ -13,6 +13,7 @@ Example: Setup project -> Create API -> Create UI component -> Connect them.
 2 real-time verification
 After building a feature, run the server and use `browser_agent` to verify it works as expected.
 Don't just assume the code is correct.
+Use `ide_tool` to open key files for the user to review.
 
 3 production quality
 Use TypeScript for type safety.

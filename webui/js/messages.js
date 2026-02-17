@@ -65,6 +65,8 @@ export function getMessageHandler(type) {
       return drawMessageUtil;
     case "hint":
       return drawMessageHint;
+    case "ide":
+      return drawMessageIde;
     default:
       return drawMessageDefault;
   }
@@ -1332,6 +1334,21 @@ export function drawMessageUtil({
 
   result.dontScroll = !preferencesStore.showUtils;
   return result;
+}
+
+export function drawMessageIde({ id, type, heading, content, kvps, ...additional }) {
+  // Execute the action if it's new
+  if (kvps && kvps.action) {
+    // Only execute if not mass rendering (initial load)
+    if (!isMassRender()) {
+      const ideStore = globalThis.Alpine?.store("ide");
+      if (ideStore) {
+        ideStore.handleAction(kvps.action, kvps);
+      }
+    }
+  }
+
+  return drawMessageInfo({ id, type, heading, content, kvps, ...additional });
 }
 
 export function drawMessageHint({

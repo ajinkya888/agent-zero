@@ -4,6 +4,7 @@ import { createStore } from "/js/AlpineStore.js";
 const model = {
   isOpen: true,
   _initialized: false,
+  activeTab: "chats", // Default tab
 
   // Centralized collapse state for all sidebar sections (persisted in localStorage)
   sectionStates: {
