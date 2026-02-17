@@ -35,7 +35,8 @@ class SystemPrompt(Extension):
        
 
 def get_main_prompt(agent: Agent):
-    return agent.read_prompt("agent.system.main.md")
+    from python.helpers import runtime
+    return agent.read_prompt("agent.system.main.md", dockerized=runtime.is_dockerized())
 
 
 def get_tools_prompt(agent: Agent):

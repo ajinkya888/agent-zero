@@ -904,6 +904,15 @@ class Agent:
                 if tool:
                     self.loop_data.current_tool = tool  # type: ignore
                     try:
+                        # Safety check
+                        from python.helpers.settings import get_settings
+                        settings_obj = get_settings()
+                        if settings_obj.get("safety_mode_enabled") and tool_name in settings_obj.get("safety_dangerous_tools", []):
+                            approval_msg = f"Tool '{tool_name}' is marked as dangerous. Please review the arguments and resume/unpause the agent to approve execution, or send a message to intervene."
+                            PrintStyle(font_color="yellow", bold=True, padding=True).print(approval_msg)
+                            self.context.log.log(type="warning", heading="Approval Required", content=approval_msg)
+                            self.context.paused = True
+
                         await self.handle_intervention()
 
                         # Call tool hooks for compatibility

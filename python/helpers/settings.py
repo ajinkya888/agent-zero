@@ -158,6 +158,9 @@ class Settings(TypedDict):
 
     update_check_enabled: bool
 
+    safety_mode_enabled: bool
+    safety_dangerous_tools: list[str]
+
 
 class PartialSettings(Settings, total=False):
     pass
@@ -599,6 +602,8 @@ def get_default_settings() -> Settings:
         secrets="",
         litellm_global_kwargs=get_default_value("litellm_global_kwargs", {}),
         update_check_enabled=get_default_value("update_check_enabled", True),
+        safety_mode_enabled=get_default_value("safety_mode_enabled", not runtime.is_dockerized()),
+        safety_dangerous_tools=get_default_value("safety_dangerous_tools", ["code_execution_tool", "search_engine", "browser_agent"]),
     )
 
 
