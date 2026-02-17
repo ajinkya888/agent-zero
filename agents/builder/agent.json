@@ -1,0 +1,5 @@
+{
+  "title": "Full-Stack Builder",
+  "description": "Agent specialized in building complete full-stack applications from scratch.",
+  "context": "Use this agent to build full-stack web applications, including frontend, backend, database integration, and deployment setup."
+}
