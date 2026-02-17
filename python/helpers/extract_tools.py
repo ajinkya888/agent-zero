@@ -24,8 +24,8 @@ def json_parse_dirty_all(json_str:str) -> list[dict[str,Any]]:
     if not json_str or not isinstance(json_str, str):
         return []
 
-    # Pattern for balanced braces
-    pattern = r'\{(?:[^{}]|(?R))*\}'
+    # Pattern for balanced braces, accounting for strings
+    pattern = r'\{(?:[^{}"\']|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|(?R))*\}'
     matches = regex.findall(pattern, json_str, regex.DOTALL)
 
     results = []

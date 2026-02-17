@@ -11,6 +11,7 @@ reset arg usage:
 if superior, orchestrate
 respond to existing subordinates using call_subordinate tool with reset false
 profile arg usage: select from available profiles for specialized subordinates, leave empty for default
+attachments arg usage: array of file paths to provide to subordinate
 
 example usage
 ~~~json
@@ -23,6 +24,7 @@ example usage
     "tool_args": {
         "profile": "",
         "message": "...",
+        "attachments": [],
         "reset": "true"
     }
 }

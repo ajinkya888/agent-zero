@@ -326,6 +326,7 @@ class UserMessage:
 class LoopData:
     def __init__(self, **kwargs):
         self.iteration = -1
+        self.repeat_count = 0
         self.system = []
         self.user_message: history.Message | None = None
         self.history_output: list[history.OutputMessage] = []
@@ -473,10 +474,14 @@ class Agent:
                         if (
                             self.loop_data.last_response == agent_response
                         ):  # if assistant_response is the same as last message in history, let him know
+                            self.loop_data.repeat_count += 1
                             # Append the assistant's response to the history
                             self.hist_add_ai_response(agent_response)
                             # Append warning message to the history
-                            warning_msg = self.read_prompt("fw.msg_repeat.md")
+                            if self.loop_data.repeat_count > 2:
+                                warning_msg = self.read_prompt("fw.msg_repeat_force.md")
+                            else:
+                                warning_msg = self.read_prompt("fw.msg_repeat.md")
                             self.hist_add_warning(message=warning_msg)
                             PrintStyle(font_color="orange", padding=True).print(
                                 warning_msg
@@ -484,6 +489,7 @@ class Agent:
                             self.context.log.log(type="warning", content=warning_msg)
 
                         else:  # otherwise proceed with tool
+                            self.loop_data.repeat_count = 0
                             # Append the assistant's response to the history
                             self.hist_add_ai_response(agent_response)
                             # process tools requested in agent message

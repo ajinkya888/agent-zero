@@ -6,7 +6,7 @@ from python.extensions.hist_add_tool_result import _90_save_tool_call_file as sa
 
 class Delegation(Tool):
 
-    async def execute(self, message="", reset="", **kwargs):
+    async def execute(self, message="", reset="", attachments=None, **kwargs):
         # create subordinate agent using the data object on this agent and set superior agent to his data object
         if (
             self.agent.get_data(Agent.DATA_NAME_SUBORDINATE) is None
@@ -28,7 +28,7 @@ class Delegation(Tool):
 
         # add user message to subordinate agent
         subordinate: Agent = self.agent.get_data(Agent.DATA_NAME_SUBORDINATE)  # type: ignore
-        subordinate.hist_add_user_message(UserMessage(message=message, attachments=[]))
+        subordinate.hist_add_user_message(UserMessage(message=message, attachments=attachments or []))
 
         # run subordinate monologue
         result = await subordinate.monologue()
