@@ -326,6 +326,7 @@ class UserMessage:
 class LoopData:
     def __init__(self, **kwargs):
         self.iteration = -1
+        self.repeat_count = 0
         self.system = []
         self.user_message: history.Message | None = None
         self.history_output: list[history.OutputMessage] = []
@@ -473,10 +474,14 @@ class Agent:
                         if (
                             self.loop_data.last_response == agent_response
                         ):  # if assistant_response is the same as last message in history, let him know
+                            self.loop_data.repeat_count += 1
                             # Append the assistant's response to the history
                             self.hist_add_ai_response(agent_response)
                             # Append warning message to the history
-                            warning_msg = self.read_prompt("fw.msg_repeat.md")
+                            if self.loop_data.repeat_count > 2:
+                                warning_msg = self.read_prompt("fw.msg_repeat_force.md")
+                            else:
+                                warning_msg = self.read_prompt("fw.msg_repeat.md")
                             self.hist_add_warning(message=warning_msg)
                             PrintStyle(font_color="orange", padding=True).print(
                                 warning_msg
@@ -484,6 +489,7 @@ class Agent:
                             self.context.log.log(type="warning", content=warning_msg)
 
                         else:  # otherwise proceed with tool
+                            self.loop_data.repeat_count = 0
                             # Append the assistant's response to the history
                             self.hist_add_ai_response(agent_response)
                             # process tools requested in agent message
@@ -499,9 +505,18 @@ class Agent:
                         # Forward repairable errors to the LLM, maybe it can fix them
                         msg = {"message": errors.format_error(e)}
                         await self.call_extensions("error_format", msg=msg)
-                        self.hist_add_warning(msg["message"])
-                        PrintStyle(font_color="red", padding=True).print(msg["message"])
-                        self.context.log.log(type="warning", content=msg["message"])
+
+                        reflection_msg = (
+                            f"{msg['message']}\n\n"
+                            "### Analysis Required\n"
+                            "Please analyze why this error occurred. "
+                            "Consider if your assumptions about the environment or tool arguments were wrong. "
+                            "Reflect on this before your next move."
+                        )
+
+                        self.hist_add_warning(reflection_msg)
+                        PrintStyle(font_color="red", padding=True).print(reflection_msg)
+                        self.context.log.log(type="warning", content=reflection_msg)
                     except Exception as e:
                         # Retry critical exceptions before failing
                         error_retries = await self.retry_critical_exception(
@@ -850,93 +865,116 @@ class Agent:
 
     async def process_tools(self, msg: str):
         # search for tool usage requests in agent message
-        tool_request = extract_tools.json_parse_dirty(msg)
+        tool_requests = extract_tools.json_parse_dirty_all(msg)
 
-        if tool_request is not None:
-            raw_tool_name = tool_request.get("tool_name", tool_request.get("tool",""))  # Get the raw tool name
-            tool_args = tool_request.get("tool_args", tool_request.get("args", {}))
-
-            tool_name = raw_tool_name  # Initialize tool_name with raw_tool_name
-            tool_method = None  # Initialize tool_method
-
-            # Split raw_tool_name into tool_name and tool_method if applicable
-            if ":" in raw_tool_name:
-                tool_name, tool_method = raw_tool_name.split(":", 1)
-
-            tool = None  # Initialize tool to None
-
-            # Try getting tool from MCP first
+        if tool_requests:
+            # Try importing MCP helper once outside the loop
             try:
                 import python.helpers.mcp_handler as mcp_helper
-
-                mcp_tool_candidate = mcp_helper.MCPConfig.get_instance().get_tool(
-                    self, tool_name
-                )
-                if mcp_tool_candidate:
-                    tool = mcp_tool_candidate
             except ImportError:
-                PrintStyle(
-                    background_color="black", font_color="yellow", padding=True
-                ).print("MCP helper module not found. Skipping MCP tool lookup.")
-            except Exception as e:
-                PrintStyle(
-                    background_color="black", font_color="red", padding=True
-                ).print(f"Failed to get MCP tool '{tool_name}': {e}")
+                mcp_helper = None # type: ignore
 
-            # Fallback to local get_tool if MCP tool was not found or MCP lookup failed
-            if not tool:
-                tool = self.get_tool(
-                    name=tool_name,
-                    method=tool_method,
-                    args=tool_args,
-                    message=msg,
-                    loop_data=self.loop_data,
-                )
+            for tool_request in tool_requests:
+                raw_tool_name = tool_request.get("tool_name", tool_request.get("tool",""))  # Get the raw tool name
+                tool_args = tool_request.get("tool_args", tool_request.get("args", {}))
 
-            if tool:
-                self.loop_data.current_tool = tool  # type: ignore
-                try:
-                    await self.handle_intervention()
+                tool_name = raw_tool_name  # Initialize tool_name with raw_tool_name
+                tool_method = None  # Initialize tool_method
 
-                    # Call tool hooks for compatibility
-                    await tool.before_execution(**tool_args)
-                    await self.handle_intervention()
+                # Split raw_tool_name into tool_name and tool_method if applicable
+                if ":" in raw_tool_name:
+                    tool_name, tool_method = raw_tool_name.split(":", 1)
 
-                    # Allow extensions to preprocess tool arguments
-                    await self.call_extensions(
-                        "tool_execute_before",
-                        tool_args=tool_args or {},
-                        tool_name=tool_name,
+                tool = None  # Initialize tool to None
+
+                # Try getting tool from MCP first
+                if mcp_helper:
+                    try:
+                        mcp_tool_candidate = mcp_helper.MCPConfig.get_instance().get_tool(
+                            self, tool_name
+                        )
+                        if mcp_tool_candidate:
+                            tool = mcp_tool_candidate
+                    except Exception as e:
+                        PrintStyle(
+                            background_color="black", font_color="red", padding=True
+                        ).print(f"Failed to get MCP tool '{tool_name}': {e}")
+
+                # Fallback to local get_tool if MCP tool was not found or MCP lookup failed
+                if not tool:
+                    tool = self.get_tool(
+                        name=tool_name,
+                        method=tool_method,
+                        args=tool_args,
+                        message=msg,
+                        loop_data=self.loop_data,
                     )
 
-                    response = await tool.execute(**tool_args)
-                    await self.handle_intervention()
+                if tool:
+                    self.loop_data.current_tool = tool  # type: ignore
+                    try:
+                        # Safety check
+                        from python.helpers.settings import get_settings
+                        settings_obj = get_settings()
+                        if settings_obj.get("safety_mode_enabled") and tool_name in settings_obj.get("safety_dangerous_tools", []):
+                            approval_msg = f"Tool '{tool_name}' is marked as dangerous. Please review the arguments and resume/unpause the agent to approve execution, or send a message to intervene."
+                            PrintStyle(font_color="yellow", bold=True, padding=True).print(approval_msg)
+                            self.context.log.log(type="warning", heading="Approval Required", content=approval_msg)
+                            self.context.paused = True
 
-                    # Allow extensions to postprocess tool response
-                    await self.call_extensions(
-                        "tool_execute_after", response=response, tool_name=tool_name
+                        await self.handle_intervention()
+
+                        # Call tool hooks for compatibility
+                        await tool.before_execution(**tool_args)
+                        await self.handle_intervention()
+
+                        # Allow extensions to preprocess tool arguments
+                        await self.call_extensions(
+                            "tool_execute_before",
+                            tool_args=tool_args or {},
+                            tool_name=tool_name,
+                        )
+
+                        response = await tool.execute(**tool_args)
+                        await self.handle_intervention()
+
+                        # Allow extensions to postprocess tool response
+                        await self.call_extensions(
+                            "tool_execute_after", response=response, tool_name=tool_name
+                        )
+
+                        await tool.after_execution(response)
+                        await self.handle_intervention()
+
+                        if response.break_loop:
+                            return response.message
+                    finally:
+                        self.loop_data.current_tool = None
+                else:
+                    error_detail = (
+                        f"Tool '{raw_tool_name}' not found or could not be initialized. "
+                        "Please check the tool name spelling and ensure it is one of the available tools described in your system prompt. "
+                        "If you are trying to use a skill, make sure it is loaded."
                     )
-
-                    await tool.after_execution(response)
-                    await self.handle_intervention()
-
-                    if response.break_loop:
-                        return response.message
-                finally:
-                    self.loop_data.current_tool = None
-            else:
-                error_detail = (
-                    f"Tool '{raw_tool_name}' not found or could not be initialized."
-                )
-                self.hist_add_warning(error_detail)
-                PrintStyle(font_color="red", padding=True).print(error_detail)
-                self.context.log.log(
-                    type="warning", content=f"{self.agent_name}: {error_detail}"
-                )
+                    self.hist_add_warning(error_detail)
+                    PrintStyle(font_color="red", padding=True).print(error_detail)
+                    self.context.log.log(
+                        type="warning", content=f"{self.agent_name}: {error_detail}"
+                    )
+            return None
         else:
             warning_msg_misformat = self.read_prompt("fw.msg_misformat.md")
-            self.hist_add_warning(warning_msg_misformat)
-            PrintStyle(font_color="red", padding=True).print(warning_msg_misformat)
+
+            reflection_msg = (
+                f"{warning_msg_misformat}\n\n"
+                "### Self-Correction Required\n"
+                "Your last response was not valid JSON or was missing required fields. "
+                "Please analyze your output format and ensure you are providing a single valid JSON object (or multiple objects if using multiple tools). "
+                "Do NOT include any text outside the JSON block."
+            )
+
+            self.hist_add_warning(reflection_msg)
+            PrintStyle(font_color="red", padding=True).print(reflection_msg)
             self.context.log.log(
                 type="warning",
                 content=f"{self.agent_name}: Message misformat, no valid tool request found.",

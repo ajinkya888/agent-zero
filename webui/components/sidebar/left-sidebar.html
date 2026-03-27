@@ -15,14 +15,30 @@
         <div class="left-panel-top no-scrollbar">
           <!-- Top Section: Header Icons + Quick Actions -->
           <x-component path="sidebar/top-section/sidebar-top.html"></x-component>
-          <!-- Chats List -->
-          <div class="config-section" id="chats-section">
-            <x-component path="sidebar/chats/chats-list.html"></x-component>
+
+          <!-- Sidebar Tabs -->
+          <div class="sidebar-tabs">
+            <button class="tab-button" :class="{'active': $store.sidebar.activeTab === 'chats'}" @click="$store.sidebar.activeTab = 'chats'">Chats</button>
+            <button class="tab-button" :class="{'active': $store.sidebar.activeTab === 'tasks'}" @click="$store.sidebar.activeTab = 'tasks'">Tasks</button>
+            <button class="tab-button" :class="{'active': $store.sidebar.activeTab === 'project'}" @click="$store.sidebar.activeTab = 'project'">Project</button>
           </div>
 
-          <!-- Tasks List -->
-          <div class="config-section" id="tasks-section">
-            <x-component path="sidebar/tasks/tasks-list.html"></x-component>
+          <!-- Tab Content -->
+          <div class="tab-content no-scrollbar" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+            <!-- Chats List -->
+            <div class="config-section" id="chats-section" x-show="$store.sidebar.activeTab === 'chats'">
+              <x-component path="sidebar/chats/chats-list.html"></x-component>
+            </div>
+
+            <!-- Tasks List -->
+            <div class="config-section" id="tasks-section" x-show="$store.sidebar.activeTab === 'tasks'">
+              <x-component path="sidebar/tasks/tasks-list.html"></x-component>
+            </div>
+
+            <!-- Project Explorer -->
+            <div class="config-section" id="project-section" x-show="$store.sidebar.activeTab === 'project'">
+              <x-component path="sidebar/project/project-explorer.html"></x-component>
+            </div>
           </div>
         </div>
         <!--Sidebar lower elements-->
@@ -34,6 +50,34 @@
   </div>
 
   <style>
+    .sidebar-tabs {
+      display: flex;
+      gap: 0;
+      margin-top: var(--spacing-md);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .tab-button {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--color-text);
+      padding: var(--spacing-sm);
+      cursor: pointer;
+      font-size: var(--font-size-small);
+      opacity: 0.6;
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-button.active {
+      opacity: 1;
+      border-bottom-color: var(--color-primary);
+      font-weight: bold;
+    }
+    .tab-button:hover {
+      opacity: 1;
+      background-color: var(--color-background-hover);
+    }
+
     /* Left Panel styles from index.css */
     #left-panel {
       background-color: var(--color-panel);

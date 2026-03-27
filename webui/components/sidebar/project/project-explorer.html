@@ -1,0 +1,87 @@
+<html>
+<head>
+    <script type="module">
+        import { store } from "/components/sidebar/project/project-explorer-store.js";
+    </script>
+</head>
+<body>
+    <div x-data x-init="$store.projectExplorer.init()" class="project-explorer">
+        <div class="section-header-row">
+            <h3 class="section-header" x-text="$store.projectExplorer.currentProject || 'No Project'"></h3>
+            <div class="header-actions">
+                <button class="btn-icon-action" x-show="$store.projectExplorer.currentPath !== '/'" @click="$store.projectExplorer.goUp()" title="Go Up">
+                    <span class="material-symbols-outlined">arrow_upward</span>
+                </button>
+                <button class="btn-icon-action" @click="$store.projectExplorer.refresh()" title="Refresh">
+                    <span class="material-symbols-outlined">refresh</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="current-path" x-text="$store.projectExplorer.currentPath" x-show="$store.projectExplorer.currentProject"></div>
+
+        <div x-show="$store.projectExplorer.loading" class="loading"></div>
+
+        <ul class="file-list no-scrollbar" x-show="!$store.projectExplorer.loading">
+            <template x-for="file in $store.projectExplorer.files" :key="file.path">
+                <li class="file-item" @click="$store.projectExplorer.openFile(file)">
+                    <span class="material-symbols-outlined file-icon" x-text="file.type === 'dir' ? 'folder' : 'description'"></span>
+                    <span class="file-name" x-text="file.name"></span>
+                </li>
+            </template>
+        </ul>
+
+        <div x-show="!$store.projectExplorer.currentProject" class="empty-message">
+            Select a project to see files.
+        </div>
+    </div>
+
+    <style>
+        .project-explorer {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            padding: var(--spacing-sm);
+        }
+        .header-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+        .current-path {
+            font-size: 10px;
+            opacity: 0.5;
+            padding: 0 var(--spacing-sm);
+            margin-bottom: var(--spacing-xs);
+            word-break: break-all;
+        }
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: var(--font-size-small);
+        }
+        .file-item:hover {
+            background-color: var(--color-background-hover);
+        }
+        .file-icon {
+            font-size: 18px;
+            opacity: 0.7;
+        }
+        .empty-message {
+            padding: var(--spacing-md);
+            text-align: center;
+            opacity: 0.5;
+            font-style: italic;
+        }
+    </style>
+</body>
+</html>

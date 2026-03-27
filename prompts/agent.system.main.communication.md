@@ -28,4 +28,7 @@ no text allowed before or after json
 }
 ~~~
 
+### Multiple Tool Calls
+You can call multiple tools in a single response by providing multiple JSON objects. This is useful for performing several independent actions at once. They will be executed sequentially.
+
 {{ include "agent.system.main.communication_additions.md" }}

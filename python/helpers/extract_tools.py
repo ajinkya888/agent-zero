@@ -20,6 +20,24 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
             return None
     return None
 
+def json_parse_dirty_all(json_str:str) -> list[dict[str,Any]]:
+    if not json_str or not isinstance(json_str, str):
+        return []
+
+    # Pattern for balanced braces, accounting for strings
+    pattern = r'\{(?:[^{}"\']|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|(?R))*\}'
+    matches = regex.findall(pattern, json_str, regex.DOTALL)
+
+    results = []
+    for match in matches:
+        try:
+            data = DirtyJson.parse_string(match)
+            if isinstance(data, dict):
+                results.append(data)
+        except Exception:
+            continue
+    return results
+
 def extract_json_object_string(content):
     start = content.find('{')
     if start == -1:

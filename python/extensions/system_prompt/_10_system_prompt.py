@@ -21,6 +21,7 @@ class SystemPrompt(Extension):
         skills = get_skills_prompt(self.agent)
         secrets_prompt = get_secrets_prompt(self.agent)
         project_prompt = get_project_prompt(self.agent)
+        knowledge_prompt = get_knowledge_prompt(self.agent)
 
         system_prompt.append(main)
         system_prompt.append(tools)
@@ -32,10 +33,13 @@ class SystemPrompt(Extension):
             system_prompt.append(secrets_prompt)
         if project_prompt:
             system_prompt.append(project_prompt)
+        if knowledge_prompt:
+            system_prompt.append(knowledge_prompt)
        
 
 def get_main_prompt(agent: Agent):
-    return agent.read_prompt("agent.system.main.md")
+    from python.helpers import runtime
+    return agent.read_prompt("agent.system.main.md", dockerized=runtime.is_dockerized())
 
 
 def get_tools_prompt(agent: Agent):
@@ -94,3 +98,12 @@ def get_skills_prompt(agent: Agent):
 
     if result:
         return agent.read_prompt("agent.system.skills.md", skills="\n".join(result))
+
+def get_knowledge_prompt(agent: Agent):
+    from python.helpers import files
+    knowledge_file = files.get_abs_path("usr/knowledge/learned_patterns.md")
+    if files.exists(knowledge_file):
+        content = files.read_file(knowledge_file)
+        if content.strip():
+            return f"## Learned Patterns & Best Practices\n\n{content}"
+    return ""
